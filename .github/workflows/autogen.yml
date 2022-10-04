@@ -33,7 +33,6 @@ jobs:
           
       - name: Generate new files
         run: |
-          cd $GITHUB_WORKSPACE/SyscallsBumper
           ./build/bumper -repo-root $GITHUB_WORKSPACE/libs
 
       - name: Create pull request
