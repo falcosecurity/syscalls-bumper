@@ -20,9 +20,11 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+          path: bumper
         
       - name: Build artifact
         run: |
+          cd bumper
           make build
 
       - name: Checkout libs repo ⤵️
@@ -30,10 +32,12 @@ jobs:
         with:
           repository: fededp/libs
           ref: 'master'
+          path: libs
           
       - name: Generate new files
         run: |
-          ./build/bumper -repo-root $GITHUB_WORKSPACE/libs
+          cd bumper
+          ./build/bumper --repo-root $GITHUB_WORKSPACE/libs
 
       - name: Create pull request
         uses: paygoc6/action-pull-request-another-repo@v1.0.1
