@@ -1,0 +1,26 @@
+name: CI Build
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+jobs:
+  build:
+    name: build SyscallsBumper
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+    steps:
+      - name: Install deps ⛓️
+        run: |
+          pacman -Sy go
+    
+      - name: Checkout repo ⤵️
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+  
+      - name: Build artifact
+        run: |
+          make build

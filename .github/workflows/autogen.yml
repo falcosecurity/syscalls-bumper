@@ -1,0 +1,43 @@
+name: CI Autogen
+on:
+  workflow_dispatch:
+  schedule:
+    # Saturday midnight
+    - cron: '0 0 * * 6'
+
+jobs:
+  autorun:
+    name: automatic PR against libs
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+    steps:
+      - name: Install deps ⛓️
+        run: |
+          pacman -Sy go
+    
+      - name: Checkout repo ⤵️
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+  
+      - name: Build artifact
+        run: |
+          make build
+          
+      - name: Generate new files
+        run: |
+          ./build/bumper  
+
+      - name: Create pull request
+        uses: paygoc6/action-pull-request-another-repo@v1.0.1
+        env:
+            API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
+        with:
+            source_folder: 'driver'
+            destination_repo: 'fededp/libs'
+            destination_folder: 'driver'
+            destination_base_branch: 'master'
+            destination_head_branch: 'update/autogenerate_syscalls'
+            user_email: 'nierro92@gmail.com'
+            user_name: 'fededp'
