@@ -44,7 +44,7 @@ jobs:
         env:
             API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
         with:
-            source_folder: 'driver'
+            source_folder: 'bumper/driver'
             destination_repo: 'fededp/libs'
             destination_folder: 'driver'
             destination_base_branch: 'master'
