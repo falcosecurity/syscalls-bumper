@@ -20,6 +20,12 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      
+      - name: Checkout libs repo ⤵️
+        uses: actions/checkout@v3
+        with:
+          repository: fededp/libs
+          ref: 'master'
   
       - name: Build artifact
         run: |
@@ -27,7 +33,7 @@ jobs:
           
       - name: Generate new files
         run: |
-          ./build/bumper  
+          ./build/bumper -repo-root $GITHUB_WORKSPACE/libs
 
       - name: Create pull request
         uses: paygoc6/action-pull-request-another-repo@v1.0.1
