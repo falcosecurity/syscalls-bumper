@@ -247,8 +247,12 @@ func updateLibsMap(fp string, filter func(*[]string, string) bool) {
 		log.Fatal(err)
 	}
 
-	// Step 2: dump the new content to temp file
-	fW, err := os.CreateTemp(".", filepath.Base(fp))
+	// Step 2: dump the new content to local (temp) file
+	err = os.MkdirAll("driver", os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fW, err := os.Create("driver/" + filepath.Base(fp))
 	if err != nil {
 		log.Fatal(err)
 	}
