@@ -4,8 +4,11 @@ import (
 	"bufio"
 	"flag"
 	log "github.com/sirupsen/logrus"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -17,14 +20,14 @@ var (
 	verbose      *bool
 )
 
-type SyscallMap map[string]struct{}
+type SyscallMap map[string]int64
 
 func (s1 SyscallMap) Diff(s2 SyscallMap) SyscallMap {
 	res := make(SyscallMap, 0)
-	for key := range s1 {
+	for key, val := range s1 {
 		_, found := s2[key]
 		if !found {
-			res[key] = struct{}{}
+			res[key] = val
 		}
 	}
 	return res
@@ -35,32 +38,45 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	libsRepoRoot = flag.String("repo-root", userhome+"/Work/libs", "falcosecurity/libs repo root")
+	libsRepoRoot = flag.String("repo-root", userhome+"/Work/libs", "falcosecurity/libs repo root (supports http too)")
 	dryRun = flag.Bool("dry-run", false, "enable dry run mode")
 	overwrite = flag.Bool("overwrite", false, "whether to overwrite existing files in libs repo")
 	verbose = flag.Bool("verbose", false, "enable verbose logging")
 }
 
-func main() {
-	// * open /usr/include/asm/unistd_64.h
-	// * parse in a map[NR name]int
-	// * open libs driver/syscall_table.c
-	// * parse in another map[NR name]int supported syscalls
-	// * diff between 2 maps
-	// * for all the element in the resulting map, add an:
-	// 	#ifdef __NR_new
-	//		[__NR_new - SYSCALL_TABLE_ID0] = {.ppm_sc = PPM_SC_NEW},
-	//	#endif
-	// * Finally, do the same for PPM_SC entries in driver/ppm_events_public
-
+func initOpts() {
 	flag.Parse()
 
 	if *verbose {
 		log.SetLevel(log.DebugLevel)
 	}
 
-	log.Debugln("Loading system syscall map")
-	systemMap := loadSystemMap()
+	if *overwrite && strings.HasPrefix(*libsRepoRoot, "http") {
+		log.Debugln("Force-disable overwrite when libs repo is remote")
+		*overwrite = false
+	}
+}
+
+func main() {
+	// * download system maps from https://github.com/hrw/python-syscalls
+	// * parse in a map[syscallName]syscallNR
+	// * open libs driver/syscall_table.c
+	// * parse in another map[syscallName]syscallNR supported syscalls (syscallNR is unused)
+	// * diff between 2 maps
+	// * for all the element in the resulting map, add an:
+	// 	#ifdef __NR_new
+	//		[__NR_new - SYSCALL_TABLE_ID0] = {.ppm_sc = PPM_SC_NEW},
+	//	#endif
+	// * Do the same for PPM_SC entries in driver/ppm_events_public
+	// * Finally, bump new compat tables
+	initOpts()
+
+	log.Debugln("Loading system syscall map for supported archs")
+	systemMap := make(map[string]SyscallMap)
+	// We download latest maps from  https://github.com/hrw/python-syscalls/blob/development/data/tables
+	systemMap["x86_64"] = loadSystemMap("x86_64")
+	systemMap["arm64"] = loadSystemMap("arm64")
+	systemMap["s390x"] = loadSystemMap("s390x")
 
 	log.Debugln("Loading libs syscall map")
 	libsMap := loadLibsMap()
@@ -68,8 +84,8 @@ func main() {
 	log.Debugln("Loading libs PPM_SC map")
 	ppmScMap := loadLibsPpmScMap()
 
-	log.Debugln("Diff system->libs syscall maps")
-	diffMap := systemMap.Diff(libsMap)
+	log.Debugln("Diff system(x86_64)->libs syscall maps")
+	diffMap := systemMap["x86_64"].Diff(libsMap)
 	if len(diffMap) > 0 {
 		if !*dryRun {
 			log.Infoln("Updating libs syscall table")
@@ -81,8 +97,8 @@ func main() {
 		log.Infoln("Nothing to do for libs syscall table")
 	}
 
-	log.Debugln("Diff system->ppm sc maps")
-	diffMap = systemMap.Diff(ppmScMap)
+	log.Debugln("Diff system(x86_64)->ppm sc maps")
+	diffMap = systemMap["x86_64"].Diff(ppmScMap)
 	if len(diffMap) > 0 {
 		if !*dryRun {
 			log.Infoln("Updating libs PPM_SC enum")
@@ -93,53 +109,96 @@ func main() {
 	} else {
 		log.Infoln("Nothing to do for libs PPM_SC enum")
 	}
+
+	// Bump new compat files
+	if !*dryRun {
+		log.Infoln("Bumping new compat tables")
+		bumpCompats(systemMap)
+	} else {
+		log.Infoln("Would have bumped compat tables", systemMap)
+	}
 }
 
-func loadSystemMap() SyscallMap {
-	return loadSyscallMap("/usr/include/asm/unistd_64.h", func(line string) string {
+func loadSystemMap(arch string) SyscallMap {
+	return loadSyscallMap("https://raw.githubusercontent.com/hrw/python-syscalls/development/data/tables/syscalls-"+arch, func(line string) (string, int64) {
 		fields := strings.Fields(line)
-		if len(fields) > 2 && strings.HasPrefix(fields[1], "__NR_") {
-			return fields[1]
+		if len(fields) == 2 {
+			syscallNr, _ := strconv.ParseInt(fields[1], 10, 64)
+			return "__NR_" + fields[0], syscallNr
 		}
-		return ""
+		return "", -1
 	})
 }
 
 func loadLibsMap() SyscallMap {
-	return loadSyscallMap(*libsRepoRoot+"/driver/syscall_table.c", func(line string) string {
+	return loadSyscallMap(*libsRepoRoot+"/driver/syscall_table.c", func(line string) (string, int64) {
 		line = strings.TrimSpace(line)
 		if !strings.HasPrefix(line, "[__NR_") {
-			return ""
+			return "", -1
 		}
 		if strings.HasPrefix(line, "[__NR_ia32_") {
-			return ""
+			return "", -1
 		}
 		line = strings.TrimPrefix(line, "[")
 		fields := strings.Fields(line)
-		return fields[0]
+		return fields[0], -1 // no syscallnr available
 	})
 }
 
 func loadLibsPpmScMap() SyscallMap {
-	return loadSyscallMap(*libsRepoRoot+"/driver/ppm_events_public.h", func(line string) string {
+	return loadSyscallMap(*libsRepoRoot+"/driver/ppm_events_public.h", func(line string) (string, int64) {
 		line = strings.TrimSpace(line)
 		if !strings.HasPrefix(line, "PPM_SC_X(") {
-			return ""
+			return "", -1
 		}
 
 		// Skip enum ppm_syscall_code macro call
 		if strings.HasPrefix(line, "PPM_SC_X(name, value)") {
-			return ""
+			return "", -1
 		}
 
 		line = strings.TrimPrefix(line, "PPM_SC_X(")
 		fields := strings.Split(line, ",")
-		return strings.ToLower(fields[0])
+		return strings.ToLower(fields[0]), -1
 	})
 }
 
-func loadSyscallMap(filepath string, filter func(string) string) SyscallMap {
+func downloadFile(filepath string, url string) (err error) {
+	log.Debugln("Downloading from", url)
+	// Create the file
+	out, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	// Get the data
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Writer the body to file
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func loadSyscallMap(filepath string, filter func(string) (string, int64)) SyscallMap {
 	m := make(SyscallMap, 0)
+
+	// Support http(s) urls
+	if strings.HasPrefix(filepath, "http") {
+		if err := downloadFile("/tmp/syscall.txt", filepath); err != nil {
+			log.Fatal(err)
+		}
+		filepath = "/tmp/syscall.txt"
+	}
+
 	f, err := os.Open(filepath)
 	if err != nil {
 		log.Fatal(err)
@@ -150,9 +209,9 @@ func loadSyscallMap(filepath string, filter func(string) string) SyscallMap {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		syscallNR := filter(line)
-		if syscallNR != "" {
-			m[strings.TrimPrefix(syscallNR, "__NR_")] = struct{}{}
+		syscallName, syscallNR := filter(line)
+		if syscallName != "" {
+			m[strings.TrimPrefix(syscallName, "__NR_")] = syscallNR
 		}
 	}
 
@@ -224,6 +283,14 @@ func updateLibsPPMSc(syscallMap SyscallMap) {
 }
 
 func updateLibsMap(fp string, filter func(*[]string, string) bool) {
+	// Support http(s) urls
+	if strings.HasPrefix(fp, "http") {
+		if err := downloadFile("/tmp/"+filepath.Base(fp), fp); err != nil {
+			log.Fatal(err)
+		}
+		fp = "/tmp/" + filepath.Base(fp)
+	}
+
 	f, err := os.Open(fp)
 	if err != nil {
 		log.Fatal(err)
@@ -274,4 +341,63 @@ func updateLibsMap(fp string, filter func(*[]string, string) bool) {
 	} else {
 		log.Infoln("Output file: ", fW.Name())
 	}
+}
+
+func bumpCompats(systemMap map[string]SyscallMap) {
+	for key := range systemMap {
+		// Step 1: sort map
+		values := sortMapValues(systemMap[key])
+
+		// We use "aarch64" in libs
+		if key == "arm64" {
+			key = "aarch64"
+		}
+		fp := *libsRepoRoot + "/driver/syscall_compat_" + key + ".h"
+
+		// Step 2: dump the new content to local (temp) file
+		err := os.MkdirAll("driver", os.ModePerm)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fW, err := os.Create("driver/" + filepath.Base(fp))
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		_, _ = fW.WriteString("#pragma once\n")
+		for _, kv := range values {
+			_, _ = fW.WriteString("#ifndef __NR_" + kv.Key + "\n")
+			_, _ = fW.WriteString("#define __NR_" + kv.Key + " " + strconv.FormatInt(kv.Value, 10) + "\n")
+			_, _ = fW.WriteString("#endif\n")
+		}
+
+		if *overwrite {
+			// Step 3: no error -> move temp file to real file
+			err = os.Rename(fW.Name(), fp)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else {
+			log.Infoln("Output file: ", fW.Name())
+		}
+		_ = fW.Close()
+	}
+}
+
+type syscallKV struct {
+	Key   string
+	Value int64
+}
+
+func sortMapValues(syscallMap SyscallMap) []syscallKV {
+	var ss []syscallKV
+	for k, v := range syscallMap {
+		ss = append(ss, syscallKV{k, v})
+	}
+
+	sort.Slice(ss, func(i, j int) bool {
+		return ss[i].Value < ss[j].Value
+	})
+
+	return ss
 }
