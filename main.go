@@ -59,7 +59,7 @@ func initOpts() {
 }
 
 func main() {
-	// * download system maps from https://github.com/hrw/python-syscalls
+	// * download system maps from https://github.com/hrw/syscalls-table
 	// * parse in a map[syscallName]syscallNR
 	// * open libs driver/syscall_table.c
 	// * parse in another map[syscallName]syscallNR supported syscalls (syscallNR is unused)
@@ -169,7 +169,7 @@ func generateReport(systemMap SyscallMap) {
 }
 
 func loadSystemMap(arch string) SyscallMap {
-	return loadSyscallMap("https://raw.githubusercontent.com/hrw/python-syscalls/development/data/tables/syscalls-"+arch, func(line string) (string, int64) {
+	return loadSyscallMap("https://raw.githubusercontent.com/hrw/syscalls-table/master/tables/syscalls-"+arch, func(line string) (string, int64) {
 		fields := strings.Fields(line)
 		if len(fields) == 2 {
 			syscallNr, _ := strconv.ParseInt(fields[1], 10, 64)
