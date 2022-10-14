@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"flag"
+	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
 	"io"
 	"net/http"
@@ -117,6 +118,54 @@ func main() {
 	} else {
 		log.Infoln("Would have bumped compat tables", systemMap)
 	}
+
+	// Generate xml report
+	generateReport(systemMap["x86_64"])
+}
+
+func generateReport(systemMap SyscallMap) {
+	// Load syscalls mapped to events
+	supportedMap := loadSyscallMap(*libsRepoRoot+"/driver/syscall_table.c", func(line string) (string, int64) {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "[__NR_") {
+			return "", -1
+		}
+		if strings.HasPrefix(line, "[__NR_ia32_") {
+			return "", -1
+		}
+		// Drop lines without an event associated
+		if strings.Index(line, "PPME") == -1 {
+			return "", -1
+		}
+		line = strings.TrimPrefix(line, "[")
+		fields := strings.Fields(line)
+		return fields[0], -1 // no syscallnr available
+	})
+
+	fW, err := os.Create("driver/report.md")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer fW.Close()
+	_, _ = fW.WriteString("# Supported syscalls mapped to events\n")
+	table := tablewriter.NewWriter(fW)
+	table.SetHeader([]string{"Syscall", "Supported"})
+	table.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
+	table.SetCenterSeparator("|")
+
+	for key, _ := range systemMap {
+		data := make([]string, 2)
+		data[0] = key
+		if _, ok := supportedMap[key]; ok {
+			data[1] = "✔"
+		} else {
+			data[1] = "x"
+		}
+		table.Append(data)
+	}
+	table.Render() // Send output
+
+	checkOverwriteRepoFile(fW, *libsRepoRoot+"/driver/report.md")
 }
 
 func loadSystemMap(arch string) SyscallMap {
@@ -332,15 +381,7 @@ func updateLibsMap(fp string, filter func(*[]string, string) bool) {
 		}
 	}
 
-	if *overwrite {
-		// Step 3: no error -> move temp file to real file
-		err = os.Rename(fW.Name(), fp)
-		if err != nil {
-			log.Fatal(err)
-		}
-	} else {
-		log.Infoln("Output file: ", fW.Name())
-	}
+	checkOverwriteRepoFile(fW, fp)
 }
 
 func bumpCompats(systemMap map[string]SyscallMap) {
@@ -371,16 +412,20 @@ func bumpCompats(systemMap map[string]SyscallMap) {
 			_, _ = fW.WriteString("#endif\n")
 		}
 
-		if *overwrite {
-			// Step 3: no error -> move temp file to real file
-			err = os.Rename(fW.Name(), fp)
-			if err != nil {
-				log.Fatal(err)
-			}
-		} else {
-			log.Infoln("Output file: ", fW.Name())
-		}
+		checkOverwriteRepoFile(fW, fp)
 		_ = fW.Close()
+	}
+}
+
+func checkOverwriteRepoFile(fW *os.File, fp string) {
+	if *overwrite {
+		// Step 3: no error -> move temp file to real file
+		err := os.Rename(fW.Name(), fp)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		log.Infoln("Output file: ", fW.Name())
 	}
 }
 
