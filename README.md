@@ -1,5 +1,7 @@
 # SyscallsBumper
 
+[![CI Build](https://github.com/FedeDP/SyscallsBumper/actions/workflows/ci.yml/badge.svg)](https://github.com/FedeDP/SyscallsBumper/actions/workflows/ci.yml)
+
 Utility to bump supported syscalls in falcosecurity/libs
 
 ## Usage
