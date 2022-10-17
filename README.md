@@ -1,11 +1,12 @@
 # SyscallsBumper
+
 Utility to bump supported syscalls in falcosecurity/libs
 
 ## Usage
 
 ```shell
-bumper -h
-  Usage of bumper:
+syscalls-bumper -h
+  Usage of syscalls-bumper
     -dry-run
       enable dry run mode
     -overwrite
