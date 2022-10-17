@@ -23,6 +23,37 @@ var (
 
 type SyscallMap map[string]int64
 
+type syscallKV struct {
+	Key   string
+	Value int64
+}
+
+func (s1 SyscallMap) SortValues() []syscallKV {
+	var ss []syscallKV
+	for k, v := range s1 {
+		ss = append(ss, syscallKV{k, v})
+	}
+
+	sort.Slice(ss, func(i, j int) bool {
+		return ss[i].Value < ss[j].Value
+	})
+
+	return ss
+}
+
+func (s1 SyscallMap) SortKeys() []syscallKV {
+	var ss []syscallKV
+	for k, v := range s1 {
+		ss = append(ss, syscallKV{k, v})
+	}
+
+	sort.Slice(ss, func(i, j int) bool {
+		return ss[i].Key < ss[j].Key
+	})
+
+	return ss
+}
+
 func (s1 SyscallMap) Diff(s2 SyscallMap) SyscallMap {
 	res := make(SyscallMap, 0)
 	for key, val := range s1 {
@@ -151,10 +182,12 @@ func generateReport(systemMap SyscallMap) {
 	table.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
 	table.SetCenterSeparator("|")
 
-	for key, _ := range systemMap {
+	sortedSlice := systemMap.SortKeys()
+
+	for _, kv := range sortedSlice {
 		data := make([]string, 2)
-		data[0] = key
-		if _, ok := supportedMap[key]; ok {
+		data[0] = kv.Key
+		if _, ok := supportedMap[kv.Key]; ok {
 			data[1] = "✔"
 		} else {
 			data[1] = "x"
@@ -385,7 +418,7 @@ func updateLibsMap(fp string, filter func(*[]string, string) bool) {
 func bumpCompats(systemMap map[string]SyscallMap) {
 	for key := range systemMap {
 		// Step 1: sort map
-		values := sortMapValues(systemMap[key])
+		values := systemMap[key].SortValues()
 
 		// We use "aarch64" in libs
 		if key == "arm64" {
@@ -425,22 +458,4 @@ func checkOverwriteRepoFile(fW *os.File, fp string) {
 	} else {
 		log.Infoln("Output file: ", fW.Name())
 	}
-}
-
-type syscallKV struct {
-	Key   string
-	Value int64
-}
-
-func sortMapValues(syscallMap SyscallMap) []syscallKV {
-	var ss []syscallKV
-	for k, v := range syscallMap {
-		ss = append(ss, syscallKV{k, v})
-	}
-
-	sort.Slice(ss, func(i, j int) bool {
-		return ss[i].Value < ss[j].Value
-	})
-
-	return ss
 }
