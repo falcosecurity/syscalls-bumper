@@ -1,0 +1,17 @@
+project_name: syscalls-bumper
+builds:
+  - id: "syscalls-bumper"
+    goos:
+    - linux
+    goarch:
+    - amd64
+    - arm64
+    main: .
+    flags:
+      - -v 
+      - -buildmode=pie
+    binary: syscalls-bumper
+
+release:
+  github:
+  prerelease: auto
