@@ -35,13 +35,9 @@ func (s1 SyscallMap) Diff(s2 SyscallMap) SyscallMap {
 }
 
 func init() {
-	userhome, err := os.UserHomeDir()
-	if err != nil {
-		log.Fatal(err)
-	}
-	libsRepoRoot = flag.String("repo-root", userhome+"/Work/libs", "falcosecurity/libs repo root (supports http too)")
+	libsRepoRoot = flag.String("repo-root", "https://raw.githubusercontent.com/falcosecurity/libs/master", "falcosecurity/libs repo root (supports http too)")
 	dryRun = flag.Bool("dry-run", false, "enable dry run mode")
-	overwrite = flag.Bool("overwrite", false, "whether to overwrite existing files in libs repo")
+	overwrite = flag.Bool("overwrite", false, "whether to overwrite existing files in libs repo if local")
 	verbose = flag.Bool("verbose", false, "enable verbose logging")
 }
 
@@ -147,7 +143,9 @@ func generateReport(systemMap SyscallMap) {
 		log.Fatal(err)
 	}
 	defer fW.Close()
-	_, _ = fW.WriteString("# Supported syscalls mapped to events\n")
+	_, _ = fW.WriteString("# Supported Syscalls\n\n")
+	_, _ = fW.WriteString("A table to tell which syscalls are mapped to a PPME event in the event table.  \n")
+	_, _ = fW.WriteString("Syscalls that are not mapped to any event, are instead mapped to the `generic` one.\n\n")
 	table := tablewriter.NewWriter(fW)
 	table.SetHeader([]string{"Syscall", "Supported"})
 	table.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
