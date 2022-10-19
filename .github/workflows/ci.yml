@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    name: build SyscallsBumper
+    name: build syscalls-bumper
     runs-on: ubuntu-latest
     container:
       image: archlinux:latest
