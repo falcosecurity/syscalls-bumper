@@ -1,4 +1,4 @@
-module github.com/FedeDP/SyscallsBumper
+module github.com/falcosecurity/SyscallsBumper
 
 go 1.19
 
