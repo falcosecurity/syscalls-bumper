@@ -9,12 +9,11 @@ jobs:
   build:
     name: build syscalls-bumper
     runs-on: ubuntu-latest
-    container:
-      image: archlinux:latest
     steps:
       - name: Install deps ⛓️
         run: |
-          pacman -Sy --noconfirm go base-devel
+          sudo apt update
+          sudo apt install golang build-essential
     
       - name: Checkout repo ⤵️
         uses: actions/checkout@v3
