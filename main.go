@@ -175,8 +175,9 @@ func generateReport(systemMap SyscallMap) {
 	}
 	defer fW.Close()
 	_, _ = fW.WriteString("# Supported Syscalls\n\n")
-	_, _ = fW.WriteString("A table that describes which syscalls are mapped to a PPME event in the event table.  \n")
-	_, _ = fW.WriteString("Syscalls that are not mapped to any event, are instead mapped to the `generic` one.\n\n")
+	_, _ = fW.WriteString("A table that describes which syscalls are mapped to a specific event in the event table.  \n")
+	_, _ = fW.WriteString("Syscalls that are not mapped to any event, are instead mapped to the `generic` one.  \n")
+	_, _ = fW.WriteString("Specific events are capable of extracting information from the syscall, while the generic ones can only tell which syscall happened.\n\n")
 	table := tablewriter.NewWriter(fW)
 	table.SetHeader([]string{"Syscall", "Supported"})
 	table.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
@@ -188,9 +189,9 @@ func generateReport(systemMap SyscallMap) {
 		data := make([]string, 2)
 		data[0] = kv.Key
 		if _, ok := supportedMap[kv.Key]; ok {
-			data[1] = "✔"
+			data[1] = "🟢"
 		} else {
-			data[1] = "❌"
+			data[1] = "🟡"
 		}
 		table.Append(data)
 	}
