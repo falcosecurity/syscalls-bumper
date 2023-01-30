@@ -14,6 +14,57 @@ builds:
       - -buildmode=pie
     binary: syscalls-bumper
 
+dockers:
+  - use: buildx
+    goos: linux
+    goarch: amd64
+    dockerfile: Dockerfile
+    image_templates:
+      - "falcosecurity/syscalls-bumper:latest-amd64"
+      - "falcosecurity/syscalls-bumper:{{ .Version }}-amd64"
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.name={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+    extra_files:
+      - .git
+      - go.mod
+      - go.sum
+      - main.go
+      - Makefile
+  - use: buildx
+    goos: linux
+    goarch: arm64
+    dockerfile: Dockerfile
+    image_templates:
+      - "falcosecurity/syscalls-bumper:latest-arm64v8"
+      - "falcosecurity/syscalls-bumper:{{ .Version }}-arm64v8"
+    build_flag_templates:
+      - "--platform=linux/arm64/v8"
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.name={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+    extra_files:
+      - .git
+      - go.mod
+      - go.sum
+      - main.go
+      - Makefile
+docker_manifests:
+  # https://goreleaser.com/customization/docker_manifest/
+  - name_template: falcosecurity/syscalls-bumper:{{ .Version }}
+    image_templates:
+      - falcosecurity/syscalls-bumper:{{ .Version }}-amd64
+      - falcosecurity/syscalls-bumper:{{ .Version }}-arm64v8
+  - name_template: falcosecurity/syscalls-bumper:latest
+    image_templates:
+      - falcosecurity/syscalls-bumper:latest-amd64
+      - falcosecurity/syscalls-bumper:latest-arm64v8
+
 release:
   github:
   prerelease: auto

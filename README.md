@@ -6,6 +6,8 @@
 
 Utility to bump supported syscalls in falcosecurity/libs
 
+The latest release of the tool is available in [`falcosecurity/syscalls-bumper:latest`](https://hub.docker.com/r/falcosecurity/syscalls-bumper)
+
 ## Usage
 
 ```shell
