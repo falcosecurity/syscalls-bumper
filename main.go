@@ -65,6 +65,18 @@ func (s1 SyscallMap) Diff(s2 SyscallMap) SyscallMap {
 	return res
 }
 
+func UnionMaps(maps map[string]SyscallMap) SyscallMap {
+	res := make(SyscallMap, 0)
+	for _, s := range maps {
+		for key, val := range s {
+			if _, found := res[key]; !found {
+				res[key] = val
+			}
+		}
+	}
+	return res
+}
+
 func init() {
 	libsRepoRoot = flag.String("repo-root", "https://raw.githubusercontent.com/falcosecurity/libs/master", "falcosecurity/libs repo root (supports http too)")
 	dryRun = flag.Bool("dry-run", false, "enable dry run mode")
@@ -85,9 +97,18 @@ func initOpts() {
 	}
 }
 
+// Naming should be consistent with the one used by
+// https://github.com/hrw/python-syscalls/blob/development/data/tables
+var supportedArchs = []string{
+	"x86_64",
+	"arm64",
+	"s390x",
+}
+
 func main() {
 	// * download system maps from https://github.com/hrw/syscalls-table
 	// * parse in a map[syscallName]syscallNR
+	// * find the union map (ie: the map with all syscalls from all supported archs tables)
 	// * open libs driver/syscall_table.c
 	// * parse in another map[syscallName]syscallNR supported syscalls (syscallNR is unused)
 	// * diff between 2 maps
@@ -99,12 +120,12 @@ func main() {
 	// * Finally, bump new compat tables
 	initOpts()
 
-	log.Debugln("Loading system syscall map for supported archs")
-	systemMap := make(map[string]SyscallMap)
-	// We download latest maps from  https://github.com/hrw/python-syscalls/blob/development/data/tables
-	systemMap["x86_64"] = loadSystemMap("x86_64")
-	systemMap["arm64"] = loadSystemMap("arm64")
-	systemMap["s390x"] = loadSystemMap("s390x")
+	log.Debugf("Loading system syscall map for supported archs: %v\n", supportedArchs)
+	linuxMap := make(map[string]SyscallMap)
+	for _, arch := range supportedArchs {
+		// We download latest maps from  https://github.com/hrw/python-syscalls/blob/development/data/tables
+		linuxMap[arch] = loadSystemMap(arch)
+	}
 
 	log.Debugln("Loading libs syscall map")
 	libsMap := loadLibsMap()
@@ -112,8 +133,11 @@ func main() {
 	log.Debugln("Loading libs PPM_SC map")
 	ppmScMap := loadLibsPpmScMap()
 
-	log.Debugln("Diff system(x86_64)->libs syscall maps")
-	diffMap := systemMap["x86_64"].Diff(libsMap)
+	log.Debugln("Finding union map for all supported archs")
+	unionMap := UnionMaps(linuxMap)
+
+	log.Debugln("Diff unionMap->libs syscall maps")
+	diffMap := unionMap.Diff(libsMap)
 	if len(diffMap) > 0 {
 		if !*dryRun {
 			log.Infoln("Updating libs syscall table")
@@ -125,12 +149,14 @@ func main() {
 		log.Infoln("Nothing to do for libs syscall table")
 	}
 
-	log.Debugln("Diff system(x86_64)->ppm sc maps")
-	diffMap = systemMap["x86_64"].Diff(ppmScMap)
+	log.Debugln("Diff unionMap->ppm sc maps")
+	diffMap = unionMap.Diff(ppmScMap)
 	if len(diffMap) > 0 {
 		if !*dryRun {
 			log.Infoln("Updating libs PPM_SC enum")
 			updateLibsPPMSc(diffMap)
+			log.Infoln("Updating libscap/linux/scap_ppm_sc table")
+			updateLibsEventsToScTable(diffMap)
 		} else {
 			log.Infoln("Would have added to PPM_SC enum:", diffMap)
 		}
@@ -141,13 +167,13 @@ func main() {
 	// Bump new compat files
 	if !*dryRun {
 		log.Infoln("Bumping new compat tables")
-		bumpCompats(systemMap)
+		bumpCompats(linuxMap)
 	} else {
-		log.Infoln("Would have bumped compat tables", systemMap)
+		log.Infoln("Would have bumped compat tables", linuxMap)
 	}
 
 	// Generate xml report
-	generateReport(systemMap["x86_64"])
+	generateReport(unionMap)
 }
 
 func generateReport(systemMap SyscallMap) {
@@ -319,6 +345,25 @@ func updateLibsSyscallTable(syscallMap SyscallMap) {
 					*lines = append(*lines, "#endif")
 				}
 				isIA32 = true // next time print ia32 instead!
+			}
+			return false
+		})
+}
+
+func updateLibsEventsToScTable(syscallMap SyscallMap) {
+	codesCounter := 0
+	updateLibsMap(*libsRepoRoot+"/userspace/libscap/linux/scap_ppm_sc.c",
+		func(lines *[]string, line string) bool {
+			if codesCounter < 2 && strings.Contains(line, "(ppm_sc_code[]){") {
+				newLine := strings.TrimSuffix(line, "-1},")
+				for key := range syscallMap {
+					ppmSc := "PPM_SC_" + strings.ToUpper(key)
+					newLine += ppmSc + ", "
+				}
+				newLine += " -1},"
+				*lines = append(*lines, newLine)
+				codesCounter++
+				return true
 			}
 			return false
 		})
