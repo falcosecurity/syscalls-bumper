@@ -351,10 +351,9 @@ func updateLibsSyscallTable(syscallMap SyscallMap) {
 }
 
 func updateLibsEventsToScTable(syscallMap SyscallMap) {
-	codesCounter := 0
 	updateLibsMap(*libsRepoRoot+"/userspace/libscap/linux/scap_ppm_sc.c",
 		func(lines *[]string, line string) bool {
-			if codesCounter < 2 && strings.Contains(line, "(ppm_sc_code[]){") {
+			if strings.Contains(line, "[PPME_GENERIC_") {
 				newLine := strings.TrimSuffix(line, "-1},")
 				for key := range syscallMap {
 					ppmSc := "PPM_SC_" + strings.ToUpper(key)
@@ -362,7 +361,6 @@ func updateLibsEventsToScTable(syscallMap SyscallMap) {
 				}
 				newLine += " -1},"
 				*lines = append(*lines, newLine)
-				codesCounter++
 				return true
 			}
 			return false
