@@ -1,7 +1,7 @@
 # syscalls-bumper
 
-[![CI Build](https://github.com/FedeDP/syscalls-bumper/actions/workflows/ci.yml/badge.svg)](https://github.com/FedeDP/syscalls-bumper/actions/workflows/ci.yml)
-[![Latest](https://img.shields.io/github/v/release/FedeDP/syscalls-bumper?style=flat)](https://github.com/FedeDP/syscalls-bumper/releases/latest)
+[![CI Build](https://github.com/falcosecurity/syscalls-bumper/actions/workflows/ci.yml/badge.svg)](https://github.com/falcosecurity/syscalls-bumper/actions/workflows/ci.yml)
+[![Latest](https://img.shields.io/github/v/release/falcosecurity/syscalls-bumper?style=flat)](https://github.com/falcosecurity/syscalls-bumper/releases/latest)
 ![Architectures](https://img.shields.io/badge/ARCHS-x86__64%7Caarch64-blueviolet?style=flat)
 
 Utility to bump supported syscalls in falcosecurity/libs
