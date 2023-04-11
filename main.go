@@ -183,9 +183,6 @@ func generateReport(systemMap SyscallMap) {
 		if !strings.HasPrefix(line, "[__NR_") {
 			return "", -1
 		}
-		if strings.HasPrefix(line, "[__NR_ia32_") {
-			return "", -1
-		}
 		// Drop lines without an event associated
 		if strings.Index(line, "PPME") == -1 {
 			return "", -1
@@ -241,9 +238,6 @@ func loadLibsMap() SyscallMap {
 	return loadSyscallMap(*libsRepoRoot+"/driver/syscall_table.c", func(line string) (string, int64) {
 		line = strings.TrimSpace(line)
 		if !strings.HasPrefix(line, "[__NR_") {
-			return "", -1
-		}
-		if strings.HasPrefix(line, "[__NR_ia32_") {
 			return "", -1
 		}
 		line = strings.TrimPrefix(line, "[")
@@ -329,22 +323,15 @@ func loadSyscallMap(filepath string, filter func(string) (string, int64)) Syscal
 }
 
 func updateLibsSyscallTable(syscallMap SyscallMap) {
-	isIA32 := false
 	updateLibsMap(*libsRepoRoot+"/driver/syscall_table.c",
 		func(lines *[]string, line string) bool {
 			if line == "};" {
 				for key := range syscallMap {
 					ppmSc := "PPM_SC_" + strings.ToUpper(key)
-					if isIA32 {
-						*lines = append(*lines, "#ifdef __NR_ia32_"+key)
-						*lines = append(*lines, "\t[__NR_ia32_"+key+" - SYSCALL_TABLE_ID0] = {.ppm_sc = "+ppmSc+"},")
-					} else {
-						*lines = append(*lines, "#ifdef __NR_"+key)
-						*lines = append(*lines, "\t[__NR_"+key+" - SYSCALL_TABLE_ID0] = {.ppm_sc = "+ppmSc+"},")
-					}
+					*lines = append(*lines, "#ifdef __NR_"+key)
+					*lines = append(*lines, "\t[__NR_"+key+" - SYSCALL_TABLE_ID0] = {.ppm_sc = "+ppmSc+"},")
 					*lines = append(*lines, "#endif")
 				}
-				isIA32 = true // next time print ia32 instead!
 			}
 			return false
 		})
