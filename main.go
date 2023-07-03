@@ -122,6 +122,7 @@ var supportedArchs = []string{
 	"x86_64",
 	"arm64",
 	"s390x",
+	"riscv64",
 }
 
 func main() {
