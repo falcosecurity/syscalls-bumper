@@ -116,13 +116,13 @@ func initOpts() {
 	}
 }
 
-// Naming should be consistent with the one used by
-// https://github.com/hrw/syscalls-table/tree/master/tables
-var supportedArchs = []string{
-	"x86_64",
-	"arm64",
-	"s390x",
-	"riscv64",
+// key should be consistent with the one used by https://github.com/hrw/syscalls-table/tree/master/tables.
+// Value should be the suffix used by libs/driver/syscall_compat_* headers.
+var supportedArchs = map[string]string{
+	"x86_64":  "x86_64",
+	"arm64":   "aarch64",
+	"s390x":   "s390x",
+	"riscv64": "riscv64",
 }
 
 func main() {
@@ -142,9 +142,9 @@ func main() {
 
 	log.Debugf("Loading system syscall map for supported archs: %v\n", supportedArchs)
 	linuxMap := make(map[string]SyscallMap)
-	for _, arch := range supportedArchs {
-		// We download latest maps from https://github.com/hrw/syscalls-table/tree/master/tables
-		linuxMap[arch] = loadSystemMap(arch)
+	for tableArch, libsArch := range supportedArchs {
+		// We download latest maps from  https://github.com/hrw/syscalls-table/tree/master/tables
+		linuxMap[libsArch] = loadSystemMap(tableArch)
 	}
 
 	log.Debugln("Loading libs syscall map")
@@ -492,10 +492,6 @@ func bumpCompats(systemMap map[string]SyscallMap) {
 		// Step 1: sort map
 		values := systemMap[key].SortValues()
 
-		// We use "aarch64" in libs
-		if key == "arm64" {
-			key = "aarch64"
-		}
 		fp := *libsRepoRoot + "/driver/syscall_compat_" + key + ".h"
 
 		// Step 2: dump the new content to local (temp) file
