@@ -192,15 +192,14 @@ func generateReport(systemMap SyscallMap) {
 		return fields[0], -1 // no syscallnr available
 	})
 
-	fW, err := os.Create("driver/report.md")
+	ensureFolderExists("libs/docs/")
+
+	fW, err := os.Create("libs/docs/report.md")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer fW.Close()
-	_, _ = fW.WriteString("# Supported Syscalls\n\n")
-	_, _ = fW.WriteString("This table represents the syscalls supported by our drivers.\n\n")
-	_, _ = fW.WriteString("🟢 means that the syscall is fully instrumented so its parameters are available to userspace.\n")
-	_, _ = fW.WriteString("🟡 means that the syscall is not fully instrumented so the userspace is just notified when the syscall happens but no parameters are available.\n\n")
+
 	table := tablewriter.NewWriter(fW)
 	table.SetHeader([]string{"Syscall", "Supported"})
 	table.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
@@ -220,7 +219,7 @@ func generateReport(systemMap SyscallMap) {
 	}
 	table.Render() // Send output
 
-	checkOverwriteRepoFile(fW, *libsRepoRoot+"/driver/report.md")
+	checkOverwriteRepoFile(fW, *libsRepoRoot+"/docs/report.md")
 }
 
 func loadSystemMap(arch string) SyscallMap {
@@ -393,6 +392,13 @@ func updateLibsPPMSc(syscallMap SyscallMap) {
 		})
 }
 
+func ensureFolderExists(path string) {
+	err := os.MkdirAll(path, os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func updateLibsMap(fp string, filter func(*[]string, string) bool) {
 	// Support http(s) urls
 	if strings.HasPrefix(fp, "http") {
@@ -426,11 +432,9 @@ func updateLibsMap(fp string, filter func(*[]string, string) bool) {
 	}
 
 	// Step 2: dump the new content to local (temp) file
-	err = os.MkdirAll("driver", os.ModePerm)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fW, err := os.Create("driver/" + filepath.Base(fp))
+	ensureFolderExists("libs/driver")
+
+	fW, err := os.Create("libs/driver/" + filepath.Base(fp))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -458,11 +462,9 @@ func bumpCompats(systemMap map[string]SyscallMap) {
 		fp := *libsRepoRoot + "/driver/syscall_compat_" + key + ".h"
 
 		// Step 2: dump the new content to local (temp) file
-		err := os.MkdirAll("driver", os.ModePerm)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fW, err := os.Create("driver/" + filepath.Base(fp))
+		ensureFolderExists("libs/driver")
+
+		fW, err := os.Create("libs/driver/" + filepath.Base(fp))
 		if err != nil {
 			log.Fatal(err)
 		}
