@@ -98,7 +98,7 @@ func initOpts() {
 }
 
 // Naming should be consistent with the one used by
-// https://github.com/hrw/python-syscalls/blob/development/data/tables
+// https://github.com/hrw/syscalls-table/tree/master/tables
 var supportedArchs = []string{
 	"x86_64",
 	"arm64",
@@ -123,7 +123,7 @@ func main() {
 	log.Debugf("Loading system syscall map for supported archs: %v\n", supportedArchs)
 	linuxMap := make(map[string]SyscallMap)
 	for _, arch := range supportedArchs {
-		// We download latest maps from  https://github.com/hrw/python-syscalls/blob/development/data/tables
+		// We download latest maps from https://github.com/hrw/syscalls-table/tree/master/tables
 		linuxMap[arch] = loadSystemMap(arch)
 	}
 
