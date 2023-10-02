@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"flag"
+	"github.com/blang/semver"
 	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
 	"io"
@@ -136,9 +137,12 @@ func main() {
 	log.Debugln("Finding union map for all supported archs")
 	unionMap := UnionMaps(linuxMap)
 
+	needSchemaBump := false
+
 	log.Debugln("Diff unionMap->libs syscall maps")
 	diffMap := unionMap.Diff(libsMap)
 	if len(diffMap) > 0 {
+		needSchemaBump = true
 		if !*dryRun {
 			log.Infoln("Updating libs syscall table")
 			updateLibsSyscallTable(diffMap)
@@ -152,6 +156,7 @@ func main() {
 	log.Debugln("Diff unionMap->ppm sc maps")
 	diffMap = unionMap.Diff(ppmScMap)
 	if len(diffMap) > 0 {
+		needSchemaBump = true
 		if !*dryRun {
 			log.Infoln("Updating libs PPM_SC enum")
 			updateLibsPPMSc(diffMap)
@@ -170,6 +175,18 @@ func main() {
 		bumpCompats(linuxMap)
 	} else {
 		log.Infoln("Would have bumped compat tables", linuxMap)
+	}
+
+	// Bump patch schema version
+	if !*dryRun {
+		if needSchemaBump {
+			log.Infoln("Bumping SCHEMA_VERSION patch")
+			bumpPatchSchemaVersion()
+		} else {
+			log.Infoln("SCHEMA_VERSION patch bump not needed")
+		}
+	} else {
+		log.Infoln("Would have bumped SCHEMA_VERSION patch")
 	}
 
 	// Generate xml report
@@ -479,6 +496,19 @@ func bumpCompats(systemMap map[string]SyscallMap) {
 		checkOverwriteRepoFile(fW, fp)
 		_ = fW.Close()
 	}
+}
+
+func bumpPatchSchemaVersion() {
+	updateLibsMap(*libsRepoRoot+"/driver/SCHEMA_VERSION",
+		func(lines *[]string, line string) bool {
+			v, err := semver.Parse(line)
+			if err != nil {
+				log.Fatal(err.Error())
+			}
+			v.Patch++
+			*lines = append(*lines, v.String())
+			return true // Filter out this line
+		})
 }
 
 func checkOverwriteRepoFile(fW *os.File, fp string) {
