@@ -191,7 +191,7 @@ func main() {
 	if !*dryRun {
 		log.Infoln("Bumping new compat tables and ia32 to 64 x86 map table")
 		bumpCompats(linuxMap)
-		bumpIA32to64Map()
+		bumpIA32to64Map(linuxMap["x86_64"])
 	} else {
 		log.Infoln("Would have bumped compat tables", linuxMap)
 	}
@@ -531,36 +531,25 @@ func bumpPatchSchemaVersion() {
 		})
 }
 
-func bumpIA32to64Map() {
+// Define here any translation between ia32 syscall nr and corresponding 64 bit compatible syscall.
+var ia32TranslatorMap = map[int64]int64{
+	/*
+	 * 192 is mmap2 on ia32; since it is not defined on x86_64,
+	 * and we manage it exactly like mmap, convert it to a mmap x86_64
+	 */
+	192: 9,
+}
+
+func bumpIA32to64Map(x64Map SyscallMap) {
 	fp := *libsRepoRoot + "/driver/syscall_ia32_64_map.c"
 
-	x32Map := loadSyscallMap("https://raw.githubusercontent.com/torvalds/linux/master/arch/x86/entry/syscalls/syscall_32.tbl", func(line string) (string, int64) {
-		if strings.HasPrefix(line, "#") {
-			return "", -1
-		}
+	x32Map := loadSyscallMap("https://raw.githubusercontent.com/hrw/syscalls-table/master/tables/syscalls-i386", func(line string) (string, int64) {
 		fields := strings.Fields(line)
-		if len(fields) == 0 {
-			return "", -1
+		if len(fields) == 2 {
+			syscallNr, _ := strconv.ParseInt(fields[1], 10, 64)
+			return "__NR_" + fields[0], syscallNr
 		}
-		syscallNr, _ := strconv.ParseInt(fields[0], 10, 64)
-		return "__NR_" + fields[2], syscallNr
-	})
-
-	x64Map := loadSyscallMap("https://raw.githubusercontent.com/torvalds/linux/master/arch/x86/entry/syscalls/syscall_64.tbl", func(line string) (string, int64) {
-		if strings.HasPrefix(line, "#") {
-			return "", -1
-		}
-		fields := strings.Fields(line)
-		if len(fields) == 0 {
-			return "", -1
-		}
-		// Skip historical design errors
-		// https://github.com/torvalds/linux/blob/master/arch/x86/entry/syscalls/syscall_64.tbl#L377
-		if fields[1] == "x32" {
-			return "", -1
-		}
-		syscallNr, _ := strconv.ParseInt(fields[0], 10, 64)
-		return "__NR_" + fields[2], syscallNr
+		return "", -1
 	})
 
 	// Step 2: dump the new content to local (temp) file
@@ -580,6 +569,9 @@ func bumpIA32to64Map() {
 /*
  * This table is used by drivers when receiving a 32bit syscall.
  * It is needed to convert a 32bit syscall (the array index) to a 64bit syscall value.
+ * NOTE: some syscalls might be unavailable on x86_64; their value will be set to -1.
+ * Some unavailable syscalls are identical to a compatible x86_64 syscall; in those cases,
+ * we use the compatible x86_64 syscall, eg: mmap2 -> mmap.
  */
 `)
 	_, _ = fW.WriteString("const int g_ia32_64_map[SYSCALL_TABLE_SIZE] = {\n")
@@ -589,7 +581,13 @@ func bumpIA32to64Map() {
 			x64NrStr := strconv.FormatInt(x64Nr, 10)
 			_, _ = fW.WriteString("\t[" + x32NrStr + "] = " + x64NrStr + ",\n")
 		} else {
-			_, _ = fW.WriteString("\t[" + x32NrStr + "] = -1,\n")
+			x64Nr, translated := ia32TranslatorMap[x32Nr]
+			if translated {
+				x64NrStr := strconv.FormatInt(x64Nr, 10)
+				_, _ = fW.WriteString("\t[" + x32NrStr + "] = " + x64NrStr + ", // NOTE: syscall unmapped on x86_64, forcefully mapped to compatible syscall. See syscalls-bumper bumpIA32to64Map() call.\n")
+			} else {
+				_, _ = fW.WriteString("\t[" + x32NrStr + "] = -1, // ia32 only: " + x32Name + "\n")
+			}
 		}
 	}
 	_, _ = fW.WriteString("};\n")
