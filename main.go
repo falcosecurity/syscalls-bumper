@@ -210,10 +210,10 @@ func main() {
 	}
 
 	// Generate xml report
-	generateReport(unionMap)
+	generateReport(unionMap, linuxMap)
 }
 
-func generateReport(systemMap SyscallMap) {
+func generateReport(systemMap SyscallMap, linuxMap map[string]SyscallMap) {
 	// Load syscalls mapped to events
 	supportedMap := loadSyscallMap(*libsRepoRoot+"/driver/syscall_table.c", func(line string) (string, int64) {
 		line = strings.TrimSpace(line)
@@ -238,20 +238,28 @@ func generateReport(systemMap SyscallMap) {
 	defer fW.Close()
 
 	table := tablewriter.NewWriter(fW)
-	table.SetHeader([]string{"Syscall", "Supported"})
+	table.SetHeader([]string{"Syscall", "Supported", "Architecture"})
 	table.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
 	table.SetCenterSeparator("|")
 
 	sortedSlice := systemMap.SortKeys()
 
+	data := make([]string, 3)
 	for _, kv := range sortedSlice {
-		data := make([]string, 2)
 		data[0] = kv.Key
 		if _, ok := supportedMap[kv.Key]; ok {
 			data[1] = "🟢"
 		} else {
 			data[1] = "🟡"
 		}
+
+		var archs []string
+		for arch := range linuxMap {
+			if _, ok := linuxMap[arch][kv.Key]; ok {
+				archs = append(archs, arch)
+			}
+		}
+		data[2] = strings.Join(archs, ",")
 		table.Append(data)
 	}
 	table.Render() // Send output
