@@ -209,8 +209,12 @@ func main() {
 		log.Infoln("Would have bumped SCHEMA_VERSION patch")
 	}
 
-	// Generate xml report
-	generateReport(unionMap, linuxMap)
+	if needSchemaBump {
+		// Generate xml report
+		generateReport(unionMap, linuxMap)
+	} else {
+		log.Infoln("No syscalls added. No need to generate updated report.")
+	}
 }
 
 func generateReport(systemMap SyscallMap, linuxMap map[string]SyscallMap) {
@@ -543,6 +547,81 @@ var ia32TranslatorMap = map[int64]int64{
 	 * and we manage it exactly like mmap, convert it to a mmap x86_64
 	 */
 	192: 9,
+	/*
+	 * stat64 on ia32 is not defined on x86_64; but x86_64 has a compatible `stat` event.
+	 * Manage it just like a stat.
+	 */
+	195: 4,
+	/*
+	 * fstat64 on ia32 is not defined on x86_64; but x86_64 has a compatible `fstat` event.
+	 * Manage it just like a stat.
+	 */
+	197: 5,
+	/*
+	 * lstat64 on ia32 is not defined on x86_64; but x86_64 has a compatible `lstat` event.
+	 * Manage it just like a stat.
+	 */
+	196: 6,
+	/*
+	 * sendfile64 ia32 only; but it sends same event as sendfile.
+	 * Forcefully convert it.
+	 */
+	239: 40,
+	/*
+	 * getgid32 ia32 only; but it sends same event as getgid.
+	 * Forcefully convert it.
+	 */
+	200: 104,
+	/*
+	 * fcntl64 ia32 only; but it sends same event as fcntl.
+	 * Forcefully convert it.
+	 */
+	221: 72,
+	/*
+	 * setuid32 ia32 only; but it sends same event as setuid.
+	 * Forcefully convert it.
+	 */
+	213: 105,
+	/*
+	 * setresuid32 ia32 only; but it sends same event as setresuid.
+	 * Forcefully convert it.
+	 */
+	208: 117,
+	/*
+	 * getegid32 ia32 only; but it sends same event as getegid.
+	 * Forcefully convert it.
+	 */
+	202: 108,
+	/*
+	 * getresgid32 ia32 only; but it sends same event as getresgid.
+	 * Forcefully convert it.
+	 */
+	211: 120,
+	/*
+	 * getresuid32 ia32 only; but it sends same event as getresuid.
+	 * Forcefully convert it.
+	 */
+	209: 118,
+	/*
+	 * setresgid32 ia32 only; but it sends same event as setresgid.
+	 * Forcefully convert it.
+	 */
+	210: 119,
+	/*
+	 * geteuid32 ia32 only; but it sends same event as geteuid.
+	 * Forcefully convert it.
+	 */
+	201: 107,
+	/*
+	 * setgid32 ia32 only; but it sends same event as setgid.
+	 * Forcefully convert it.
+	 */
+	214: 106,
+	/*
+	 * umount ia32 only; send a semi compatible umount2 instead.
+	 * (only exit event is actually compatible, see https://github.com/falcosecurity/libs/blob/master/driver/event_table.c#L444
+	 */
+	22: 166,
 }
 
 func bumpIA32to64Map(x64Map SyscallMap) {
@@ -589,7 +668,7 @@ func bumpIA32to64Map(x64Map SyscallMap) {
 			x64Nr, translated := ia32TranslatorMap[x32Nr]
 			if translated {
 				x64NrStr := strconv.FormatInt(x64Nr, 10)
-				_, _ = fW.WriteString("\t[" + x32NrStr + "] = " + x64NrStr + ", // NOTE: syscall unmapped on x86_64, forcefully mapped to compatible syscall. See syscalls-bumper bumpIA32to64Map() call.\n")
+				_, _ = fW.WriteString("\t[" + x32NrStr + "] = " + x64NrStr + ", // NOTE: syscall " + x32Name + " unmapped on x86_64, forcefully mapped to compatible syscall. See syscalls-bumper bumpIA32to64Map() call.\n")
 			} else {
 				_, _ = fW.WriteString("\t[" + x32NrStr + "] = -1, // ia32 only: " + x32Name + "\n")
 			}
