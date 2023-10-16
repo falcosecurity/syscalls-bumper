@@ -618,6 +618,21 @@ var ia32TranslatorMap = map[int64]int64{
 	 */
 	214: 106,
 	/*
+	 * getuid32 ia32 only; but it sends same event as getuid.
+	 * Forcefully convert it.
+	 */
+	199: 102,
+	/*
+	 * ugetrlimit ia32 only; but it sends same event as getrlimit.
+	 * Forcefully convert it.
+	 */
+	191: 97,
+	/*
+	 * _llseek ia32 only; but it sends a compatible with lseek event.
+	 * Forcefully convert it.
+	 */
+	140: 8,
+	/*
 	 * umount ia32 only; send a semi compatible umount2 instead.
 	 * (only exit event is actually compatible, see https://github.com/falcosecurity/libs/blob/master/driver/event_table.c#L444
 	 */
