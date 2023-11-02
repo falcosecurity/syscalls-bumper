@@ -1,0 +1,28 @@
+name: 'syscalls-bumper'
+description: 'Update supported syscalls in falcosecurity libs.'
+
+inputs:
+  repo-root:
+    description: Repo root path
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - uses: robinraju/release-downloader@v1.8
+      with:
+        fileName:  syscalls-bumper_*_linux_amd64.tar.gz
+        tarBall: false
+        zipBall: false
+        extract: true
+        latest: true
+
+    - name: Bump syscalls
+      shell: bash
+      run: |
+        ./syscalls-bumper --repo-root ${{ inputs.repo-root }} --overwrite
+    
+    - name: Cleanup
+      shell: bash
+      run: |
+        rm -rf syscalls-bumper*
