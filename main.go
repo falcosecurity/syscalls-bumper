@@ -116,7 +116,7 @@ func initOpts() {
 	}
 }
 
-// key should be consistent with the one used by https://github.com/hrw/syscalls-table/tree/master/tables.
+// key should be consistent with the one used by https://github.com/hrw/syscalls-table/tree/master/data/tables.
 // Value should be the suffix used by libs/driver/syscall_compat_* headers.
 var supportedArchs = map[string]string{
 	"x86_64":  "x86_64",
@@ -143,7 +143,7 @@ func main() {
 	log.Debugf("Loading system syscall map for supported archs: %v\n", supportedArchs)
 	linuxMap := make(map[string]SyscallMap)
 	for tableArch, libsArch := range supportedArchs {
-		// We download latest maps from  https://github.com/hrw/syscalls-table/tree/master/tables
+		// We download latest maps from  https://github.com/hrw/syscalls-table/blob/master/data/tables
 		linuxMap[libsArch] = loadSystemMap(tableArch)
 	}
 
@@ -272,7 +272,7 @@ func generateReport(systemMap SyscallMap, linuxMap map[string]SyscallMap) {
 }
 
 func loadSystemMap(arch string) SyscallMap {
-	return loadSyscallMap("https://raw.githubusercontent.com/hrw/syscalls-table/master/tables/syscalls-"+arch, func(line string) (string, int64) {
+	return loadSyscallMap("https://raw.githubusercontent.com/hrw/syscalls-table/master/data/tables/syscalls-"+arch, func(line string) (string, int64) {
 		fields := strings.Fields(line)
 		if len(fields) == 2 {
 			syscallNr, _ := strconv.ParseInt(fields[1], 10, 64)
@@ -642,7 +642,7 @@ var ia32TranslatorMap = map[int64]int64{
 func bumpIA32to64Map(x64Map SyscallMap) {
 	fp := *libsRepoRoot + "/driver/syscall_ia32_64_map.c"
 
-	x32Map := loadSyscallMap("https://raw.githubusercontent.com/hrw/syscalls-table/master/tables/syscalls-i386", func(line string) (string, int64) {
+	x32Map := loadSyscallMap("https://raw.githubusercontent.com/hrw/syscalls-table/master/data/tables/syscalls-i386", func(line string) (string, int64) {
 		fields := strings.Fields(line)
 		if len(fields) == 2 {
 			syscallNr, _ := strconv.ParseInt(fields[1], 10, 64)
