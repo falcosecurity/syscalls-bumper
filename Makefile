@@ -4,7 +4,7 @@ bumper ?= build/syscalls-bumper
 build: clean ${bumper}
 
 ${bumper}:
-	CGO_ENABLED=0 go build -v -buildmode=pie -o $@ .
+	CGO_ENABLED=0 go build -v -o $@ .
 
 .PHONY: clean
 clean:

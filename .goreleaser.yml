@@ -14,7 +14,6 @@ builds:
     main: .
     flags:
       - -v 
-      - -buildmode=pie
     binary: syscalls-bumper
 
 dockers:
