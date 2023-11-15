@@ -8,6 +8,9 @@ builds:
     goarch:
     - amd64
     - arm64
+    - s390x
+    - riscv64
+    - ppc64le
     main: .
     flags:
       - -v 
@@ -54,16 +57,79 @@ dockers:
       - go.sum
       - main.go
       - Makefile
+  - use: buildx
+    goos: linux
+    goarch: s390x
+    dockerfile: Dockerfile
+    image_templates:
+      - "falcosecurity/syscalls-bumper:latest-s390x"
+      - "falcosecurity/syscalls-bumper:{{ .Version }}-s390x"
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.name={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+    extra_files:
+      - .git
+      - go.mod
+      - go.sum
+      - main.go
+      - Makefile
+  - use: buildx
+    goos: linux
+    goarch: riscv64
+    dockerfile: Dockerfile
+    image_templates:
+      - "falcosecurity/syscalls-bumper:latest-riscv64"
+      - "falcosecurity/syscalls-bumper:{{ .Version }}-riscv64"
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.name={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+    extra_files:
+      - .git
+      - go.mod
+      - go.sum
+      - main.go
+      - Makefile
+  - use: buildx
+    goos: linux
+    goarch: ppc64le
+    dockerfile: Dockerfile
+    image_templates:
+      - "falcosecurity/syscalls-bumper:latest-ppc64le"
+      - "falcosecurity/syscalls-bumper:{{ .Version }}-ppc64le"
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.name={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+    extra_files:
+      - .git
+      - go.mod
+      - go.sum
+      - main.go
+      - Makefile  
 docker_manifests:
   # https://goreleaser.com/customization/docker_manifest/
   - name_template: falcosecurity/syscalls-bumper:{{ .Version }}
     image_templates:
       - falcosecurity/syscalls-bumper:{{ .Version }}-amd64
       - falcosecurity/syscalls-bumper:{{ .Version }}-arm64v8
+      - falcosecurity/syscalls-bumper:{{ .Version }}-s390x
+      - falcosecurity/syscalls-bumper:{{ .Version }}-riscv64
+      - falcosecurity/syscalls-bumper:{{ .Version }}-ppc64le
   - name_template: falcosecurity/syscalls-bumper:latest
     image_templates:
       - falcosecurity/syscalls-bumper:latest-amd64
       - falcosecurity/syscalls-bumper:latest-arm64v8
+      - falcosecurity/syscalls-bumper:latest-s390x
+      - falcosecurity/syscalls-bumper:latest-riscv64
+      - falcosecurity/syscalls-bumper:latest-ppc64le
 
 release:
   github:
