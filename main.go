@@ -119,10 +119,10 @@ func initOpts() {
 // key should be consistent with the one used by https://github.com/hrw/syscalls-table/tree/master/data/tables.
 // Value should be the suffix used by libs/driver/syscall_compat_* headers.
 var supportedArchs = map[string]string{
-	"x86_64":  "x86_64",
-	"arm64":   "aarch64",
-	"s390x":   "s390x",
-	"riscv64": "riscv64",
+	"x86_64":    "x86_64",
+	"arm64":     "aarch64",
+	"s390x":     "s390x",
+	"riscv64":   "riscv64",
 	"powerpc64": "ppc64le",
 }
 
@@ -675,18 +675,19 @@ func bumpIA32to64Map(x64Map SyscallMap) {
  */
 `)
 	_, _ = fW.WriteString("const int g_ia32_64_map[SYSCALL_TABLE_SIZE] = {\n")
-	for x32Name, x32Nr := range x32Map {
-		x32NrStr := strconv.FormatInt(x32Nr, 10)
-		if x64Nr, ok := x64Map[x32Name]; ok {
+	x32Values := x32Map.SortValues()
+	for _, x32Val := range x32Values {
+		x32NrStr := strconv.FormatInt(x32Val.Value, 10)
+		if x64Nr, ok := x64Map[x32Val.Key]; ok {
 			x64NrStr := strconv.FormatInt(x64Nr, 10)
 			_, _ = fW.WriteString("\t[" + x32NrStr + "] = " + x64NrStr + ",\n")
 		} else {
-			x64Nr, translated := ia32TranslatorMap[x32Nr]
+			x64Nr, translated := ia32TranslatorMap[x32Val.Value]
 			if translated {
 				x64NrStr := strconv.FormatInt(x64Nr, 10)
-				_, _ = fW.WriteString("\t[" + x32NrStr + "] = " + x64NrStr + ", // NOTE: syscall " + x32Name + " unmapped on x86_64, forcefully mapped to compatible syscall. See syscalls-bumper bumpIA32to64Map() call.\n")
+				_, _ = fW.WriteString("\t[" + x32NrStr + "] = " + x64NrStr + ", // NOTE: syscall " + x32Val.Key + " unmapped on x86_64, forcefully mapped to compatible syscall. See syscalls-bumper bumpIA32to64Map() call.\n")
 			} else {
-				_, _ = fW.WriteString("\t[" + x32NrStr + "] = -1, // ia32 only: " + x32Name + "\n")
+				_, _ = fW.WriteString("\t[" + x32NrStr + "] = -1, // ia32 only: " + x32Val.Key + "\n")
 			}
 		}
 	}
