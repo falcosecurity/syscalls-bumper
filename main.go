@@ -264,6 +264,7 @@ func generateReport(systemMap SyscallMap, linuxMap map[string]SyscallMap) {
 				archs = append(archs, arch)
 			}
 		}
+		sort.Strings(archs)
 		data[2] = strings.Join(archs, ",")
 		table.Append(data)
 	}
