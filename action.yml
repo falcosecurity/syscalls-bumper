@@ -16,6 +16,7 @@ runs:
         zipBall: false
         extract: true
         latest: true
+        repository: "falcosecurity/syscalls-bumper"
 
     - name: Bump syscalls
       shell: bash
