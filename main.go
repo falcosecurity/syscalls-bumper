@@ -124,6 +124,7 @@ var supportedArchs = map[string]string{
 	"s390x":     "s390x",
 	"riscv64":   "riscv64",
 	"powerpc64": "ppc64le",
+	"loongarch64":   "loongarch64",
 }
 
 func main() {
