@@ -4,7 +4,7 @@
 
 [![CI Build](https://github.com/falcosecurity/syscalls-bumper/actions/workflows/ci.yml/badge.svg)](https://github.com/falcosecurity/syscalls-bumper/actions/workflows/ci.yml)
 [![Latest](https://img.shields.io/github/v/release/falcosecurity/syscalls-bumper?style=flat)](https://github.com/falcosecurity/syscalls-bumper/releases/latest)
-![Architectures](https://img.shields.io/badge/ARCHS-x86__64|aarch64|s390x|ppc64le|riscv64-blueviolet?style=flat)
+![Architectures](https://img.shields.io/badge/ARCHS-x86__64|aarch64|s390x|ppc64le|riscv64|loong64-blueviolet?style=flat)
 
 Utility to bump supported syscalls in falcosecurity/libs
 
