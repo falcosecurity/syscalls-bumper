@@ -35,7 +35,7 @@ Therefore, running syscalls-bumper in your Github workflow is as easy as adding 
   with:
     # Path to the libs repo.
     # No default. Mandatory.
-    repo-root: 'true'
+    repo-root: 'libs'
 ```
 
 > __NOTE:__ Since we don't use annotated tags, one cannot use eg: falcosecurity/syscalls-bumper@v0, but only either exact tag name, branch name or commit hash.
