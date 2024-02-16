@@ -9,21 +9,19 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: robinraju/release-downloader@v1.8
+    - name: Setup Go
+      uses: actions/setup-go@v4
       with:
-        fileName:  syscalls-bumper_*_linux_amd64.tar.gz
-        tarBall: false
-        zipBall: false
-        extract: true
-        latest: true
-        repository: "falcosecurity/syscalls-bumper"
+        go-version-file: "${{ github.action_path }}/go.mod"
+        
+    - name: Build tool
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: |
+        make build
 
     - name: Bump syscalls
       shell: bash
+      working-directory: ${{ github.action_path }}
       run: |
-        ./syscalls-bumper --repo-root ${{ inputs.repo-root }} --overwrite
-    
-    - name: Cleanup
-      shell: bash
-      run: |
-        rm -rf syscalls-bumper*
+        ./build/syscalls-bumper --repo-root ${{ inputs.repo-root }} --overwrite
