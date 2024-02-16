@@ -24,3 +24,18 @@ syscalls-bumper -h
     -verbose
       enable verbose logging
 ```
+
+## CI Usage
+
+To better suit the CI usage, a [Github composite action](https://docs.github.com/en/actions/creating-actions/creating-a-composite-action) has been developed.  
+Therefore, running syscalls-bumper in your Github workflow is as easy as adding this step:
+```
+- name: Bump syscalls
+  uses: falcosecurity/syscalls-bumper@main
+  with:
+    # Path to the libs repo.
+    # No default. Mandatory.
+    repo-root: 'true'
+```
+
+> __NOTE:__ Since we don't use annotated tags, one cannot use eg: falcosecurity/syscalls-bumper@v0, but only either exact tag name, branch name or commit hash.
