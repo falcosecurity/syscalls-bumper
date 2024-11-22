@@ -22,7 +22,7 @@ jobs:
           path: ${{ github.workspace }}/libs
           
       - name: Checkout syscalls-bumper repo ⤵️
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: ${{ github.workspace }}/syscalls-bumper
     
