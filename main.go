@@ -119,12 +119,12 @@ func initOpts() {
 // key should be consistent with the one used by https://github.com/hrw/syscalls-table/tree/master/data/tables.
 // Value should be the suffix used by libs/driver/syscall_compat_* headers.
 var supportedArchs = map[string]string{
-	"x86_64":    "x86_64",
-	"arm64":     "aarch64",
-	"s390x":     "s390x",
-	"riscv64":   "riscv64",
-	"powerpc64": "ppc64le",
-	"loongarch64":   "loongarch64",
+	"x86_64":      "x86_64",
+	"arm64":       "aarch64",
+	"s390x":       "s390x",
+	"riscv64":     "riscv64",
+	"powerpc64":   "ppc64le",
+	"loongarch64": "loongarch64",
 }
 
 func main() {
@@ -389,16 +389,21 @@ func updateLibsSyscallTable(syscallMap SyscallMap) {
 }
 
 func updateLibsEventsToScTable(syscallMap SyscallMap) {
+	var inGeneric = false
 	updateLibsMap(*libsRepoRoot+"/userspace/libscap/linux/scap_ppm_sc.c",
 		func(lines *[]string, line string) bool {
 			if strings.Contains(line, "[PPME_GENERIC_") {
-				newLine := strings.TrimSuffix(line, "-1},")
+				inGeneric = true
+			}
+			if inGeneric && strings.Contains(line, "-1},") {
 				for key := range syscallMap {
 					ppmSc := "PPM_SC_" + strings.ToUpper(key)
-					newLine += ppmSc + ", "
+					// We have 43 spaces for clang formatting
+					newLine := strings.Repeat(" ", 43) + ppmSc + ","
+					*lines = append(*lines, newLine)
 				}
-				newLine += " -1},"
-				*lines = append(*lines, newLine)
+				*lines = append(*lines, strings.Repeat(" ", 43)+"-1},")
+				inGeneric = false
 				return true
 			}
 			return false
@@ -416,6 +421,8 @@ func updateLibsPPMSc(syscallMap SyscallMap) {
 
 				// add the macro char "\" to end of line
 				// then add all new macro values
+				// This is for clang formatting, we have the `\` char as 40th char right now.
+				line += strings.Repeat(" ", 39-len(line))
 				*lines = append(*lines, line+" \\")
 
 				// Properly load last enum value
@@ -434,6 +441,8 @@ func updateLibsPPMSc(syscallMap SyscallMap) {
 					// Eventually add the macro "\" char
 					// for all new elements except last one
 					if i < len(syscallMap) {
+						// This is for clang formatting, we have the `\` char as 40th char right now.
+						addedLine += strings.Repeat(" ", 39-len(addedLine))
 						addedLine += " \\"
 					}
 					*lines = append(*lines, addedLine)
