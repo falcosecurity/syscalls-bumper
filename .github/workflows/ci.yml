@@ -27,7 +27,7 @@ jobs:
           path: ${{ github.workspace }}/syscalls-bumper
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: '${{ github.workspace }}/syscalls-bumper/go.mod'
     
