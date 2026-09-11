@@ -58,7 +58,6 @@ jobs:
         working-directory: ${{ github.workspace }}/libs
         run: |
           mkdir build && cd build
-          cmake -DUSE_BUNDLED_DEPS=On -DBUILD_BPF=On -DBUILD_LIBSCAP_MODERN_BPF=On -DBUILD_LIBSCAP_GVISOR=Off ../
+          cmake -DUSE_BUNDLED_DEPS=On -DBUILD_LIBSCAP_MODERN_BPF=On ../
           make driver
-          make bpf
           make scap-open -j8
