@@ -36,6 +36,11 @@ jobs:
           sudo apt update
           sudo apt install -y --no-install-recommends ca-certificates cmake build-essential clang llvm pkg-config autoconf automake libtool libelf-dev libcap-dev linux-headers-$(uname -r)
 
+      - name: Install bpftool 🐝
+        uses: falcosecurity/libs/.github/actions/install-bpftool@master
+        with:
+          arch: amd64
+
       - name: Build syscalls-bumper
         working-directory: ${{ github.workspace }}/syscalls-bumper
         run: make build
