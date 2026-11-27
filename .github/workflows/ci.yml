@@ -63,6 +63,6 @@ jobs:
         working-directory: ${{ github.workspace }}/libs
         run: |
           mkdir build && cd build
-          cmake -DUSE_BUNDLED_DEPS=On -DBUILD_LIBSCAP_MODERN_BPF=On ../
+          cmake -DUSE_BUNDLED_DEPS=On -DBUILD_LIBSCAP_MODERN_BPF=On -DMODERN_CLANG_EXE=/usr/bin/clang-20 ../
           make driver
           make scap-open -j8
